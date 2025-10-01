@@ -1,0 +1,15 @@
+# Fichier d'environnement avec données sensibles
+.env
+
+# Dossiers de configuration des services
+radarr/
+sonarr/
+qbittorrent/
+prowlarr/
+plex/
+
+# Données (médias et téléchargements)
+data/
+
+# Configuration de l'éditeur
+.claude/
