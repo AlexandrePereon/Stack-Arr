@@ -9,6 +9,7 @@ services:
       - /dev/net/tun:/dev/net/tun
     ports:
       - 8081:8080/tcp # qbittorrent WebUI (port externe 8081 car 8080 utilisé par portfolio)
+      - 8888:8888/tcp # HTTP proxy pour Prowlarr et autres services
     environment:
       - TZ=${TZ}
       - UPDATER_PERIOD=24h
@@ -23,6 +24,7 @@ services:
       - VPN_PORT_FORWARDING=on
       - VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORTS}}}" http://127.0.0.1:8080/api/v2/app/setPreferences 2>&1'
       - SERVER_COUNTRIES=${SERVER_COUNTRIES}
+      - HTTPPROXY=on # Active le proxy HTTP sur le port 8888
     volumes:
       - ./gluetun/config:/gluetun
     networks:

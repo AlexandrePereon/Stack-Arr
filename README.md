@@ -163,7 +163,24 @@ docker exec gluetun cat /tmp/gluetun/forwarded_port
 
 📚 **Plus de détails** : [TRaSH's Guide - How to setup FlareSolverr](https://trash-guides.info/Prowlarr/prowlarr-setup-flaresolverr/)
 
-### 2. Prowlarr - Ajout des indexers
+### 2. Prowlarr - Configuration du proxy VPN (Recommandé)
+
+**Pourquoi ?** Certains trackers bloquent les IP de datacenters (OVH, AWS, etc.). En utilisant le proxy VPN de Gluetun, Prowlarr accèdera aux indexers via une IP résidentielle.
+
+1. Accédez à `https://prowlarr.votredomaine.fr`
+2. **Settings → General → Section "HTTP(S) Proxy"**
+   - Enable : ✅ **Activé**
+   - Proxy Type : **HTTP(S)**
+   - Hostname : `gluetun`
+   - Port : `8888`
+   - Username : (laisser vide)
+   - Password : (laisser vide)
+   - Bypass Proxy for Local Addresses : ✅ **Activé**
+   - Cliquez sur **Save**
+
+**Note** : Ceci est optionnel mais fortement recommandé. Les requêtes vers les indexers passeront par le VPN, tandis que les communications avec Radarr/Sonarr resteront directes.
+
+### 3. Prowlarr - Ajout des indexers
 
 1. **Settings → Apps → Add Application (Radarr)**
    - Type : **Radarr**
@@ -176,11 +193,13 @@ docker exec gluetun cat /tmp/gluetun/forwarded_port
    - Sonarr Server : `http://sonarr:8989`
    - API Key : Copiez depuis Sonarr (Settings → General → API Key)
 3. **Indexers → Add Indexer**
-   - Ajoutez vos trackers préférés (YGG, 1337x, The Pirate Bay, etc.)
+   - Ajoutez vos trackers préférés (YGG, 1337x, The Pirate Bay, cpasbien, etc.)
    - **Si un indexer est protégé par Cloudflare** : Ajoutez-lui le tag `flaresolverr`
    - Les indexers seront automatiquement synchronisés vers Radarr et Sonarr
 
-### 3. Radarr - Configuration du client de téléchargement
+**💡 Astuce** : Si vous rencontrez des erreurs "Cloudflare Protection" ou "403 Forbidden" sur certains indexers, c'est souvent dû au blocage des IP datacenters. Le proxy VPN configuré ci-dessus devrait résoudre ce problème.
+
+### 4. Radarr - Configuration du client de téléchargement
 
 1. Accédez à `https://radarr.votredomaine.fr`
 2. **Settings → Download Clients → Add → qBittorrent**
@@ -195,7 +214,7 @@ docker exec gluetun cat /tmp/gluetun/forwarded_port
 
 **💡 Pourquoi `gluetun` ?** Comme qBittorrent utilise le réseau de Gluetun (`network_mode: service:gluetun`), c'est Gluetun qui expose le port 8080. Radarr doit donc se connecter à `gluetun:8080` pour atteindre qBittorrent.
 
-### 4. Sonarr - Configuration du client de téléchargement
+### 5. Sonarr - Configuration du client de téléchargement
 
 1. Accédez à `https://sonarr.votredomaine.fr`
 2. **Settings → Download Clients → Add → qBittorrent**
@@ -211,7 +230,7 @@ docker exec gluetun cat /tmp/gluetun/forwarded_port
 
 **💡 Pourquoi `gluetun` ?** Même raison que pour Radarr : qBittorrent partage le réseau de Gluetun, donc on doit se connecter via `gluetun:8080`.
 
-### 5. qBittorrent - Configuration des chemins
+### 6. qBittorrent - Configuration des chemins
 
 1. Accédez à `https://qbittorrent.votredomaine.fr`
 2. **Options → Downloads**
@@ -221,7 +240,7 @@ docker exec gluetun cat /tmp/gluetun/forwarded_port
    - Maximum active downloads : `2-3` (pour limiter l'espace utilisé)
    - Maximum active torrents : `5-10`
 
-### 6. Plex - Configuration des bibliothèques
+### 7. Plex - Configuration des bibliothèques
 
 1. Accédez à `https://plex.votredomaine.fr` ou `http://votre-ip:32400/web`
 2. Connectez-vous avec votre compte Plex
@@ -234,7 +253,7 @@ docker exec gluetun cat /tmp/gluetun/forwarded_port
 5. **Settings → Network**
    - Activer l'accès distant (port 32400 déjà exposé)
 
-### 7. Radarr/Sonarr → Plex - Notifications automatiques
+### 8. Radarr/Sonarr → Plex - Notifications automatiques
 
 **Pour Radarr (films) :**
 1. Dans Radarr : **Settings → Connect → Add → Plex Media Server**
@@ -426,6 +445,29 @@ docker compose restart gluetun qbittorrent
 2. **Vérifier qBittorrent** : `docker logs qbittorrent` - doit montrer "WebUI started"
 3. **Port conflict** : Le port 8081 est-il libre ? `netstat -tulpn | grep 8081`
 4. **Restart** : `docker compose restart gluetun qbittorrent`
+
+### Prowlarr : Indexer bloqué "403 Forbidden" ou "Cloudflare"
+
+**Symptômes** : Erreur "Unable to access xxx, blocked by CloudFlare Protection" ou "403 Forbidden"
+
+**Cause** : Certains trackers (cpasbien, YGG, etc.) bloquent les IP de datacenters (OVH, AWS, etc.)
+
+**Solution** : Configurez le proxy VPN dans Prowlarr
+1. **Settings → General → HTTP(S) Proxy**
+   - Enable : ✅ Activé
+   - Proxy Type : HTTP(S)
+   - Hostname : `gluetun`
+   - Port : `8888`
+2. Testez l'indexer à nouveau
+
+**Vérification** : Testez si le site est accessible via le VPN
+```bash
+# Direct (bloqué)
+curl -I https://www1.cpasbien.to/
+
+# Via VPN (devrait fonctionner)
+docker exec qbittorrent wget --spider -S https://www1.cpasbien.to/
+```
 
 ### Radarr/Sonarr : "Unable to communicate with qBittorrent"
 
