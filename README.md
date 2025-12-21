@@ -4,6 +4,7 @@ Stack Docker complète pour télécharger et gérer automatiquement vos films et
 
 ## 🎯 Services inclus
 
+- **Overseerr** : Interface de découverte et de gestion des demandes (guichet unique pour les utilisateurs)
 - **Gluetun** : Conteneur VPN (ProtonVPN) pour sécuriser qBittorrent
 - **Radarr** : Gestion et téléchargement automatique de films
 - **Sonarr** : Gestion et téléchargement automatique de séries TV
@@ -20,6 +21,7 @@ Tous les services (sauf FlareSolverr) sont exposés via **Traefik** en HTTPS ave
 - Traefik configuré avec réseau `traefik-net` (voir `/home/Projects/Traefik`)
 - **Compte ProtonVPN Plus** (requis pour le VPN et le port forwarding)
 - Noms de domaine configurés (DNS pointant vers votre serveur) :
+  - `overseer.votredomaine.fr`
   - `radarr.votredomaine.fr`
   - `sonarr.votredomaine.fr`
   - `qbittorrent.votredomaine.fr`
@@ -93,6 +95,7 @@ mkdir -p data/movies
 mkdir -p data/tv
 mkdir -p data/downloads/torrents
 mkdir -p data/downloads/usenet
+mkdir -p overseerr/config
 mkdir -p gluetun/config
 mkdir -p radarr/config
 mkdir -p sonarr/config
@@ -274,6 +277,33 @@ docker exec gluetun cat /tmp/gluetun/forwarded_port
 
 Plex sera maintenant notifié automatiquement à chaque nouveau film ou épisode !
 
+### 9. Overseerr - Interface de demande (Guichet Unique)
+
+Overseerr est l'interface que vous (et vos utilisateurs) utiliserez au quotidien. Il centralise Plex, Radarr et Sonarr.
+
+1. Accédez à https://overseer.votredomaine.fr
+
+2. Connexion Plex : Connectez-vous avec votre compte principal.
+
+3. Découverte automatique de votre serveur
+
+4. Configuration Plex :
+   - Hostname : `[local][secure]`
+   - Port : `32400`
+   - SSL : `Décoché`
+
+5. Configuration Radarr/Sonarr (Services) :
+
+   - Allez dans **Settings** → **Services**
+
+   - Radarr : Host `radarr`, Port `7878`, API Key `(à copier depuis Radarr)`
+
+   - Sonarr : Host `sonarr`, Port `8989`, API Key `(à copier depuis Sonarr)`
+
+Sélectionnez vos "Quality Profiles" et "Root Folders" par défaut.
+
+💡 Conseil mobile : Sur votre téléphone, ouvrez l'URL et faites "Ajouter à l'écran d'accueil" pour utiliser Overseerr comme une application native.
+
 ## 📂 Structure des dossiers
 
 ```
@@ -292,6 +322,7 @@ Plex sera maintenant notifié automatiquement à chaque nouveau film ou épisode
 ├── sonarr/config/            # Config Sonarr
 ├── qbittorrent/config/       # Config qBittorrent
 ├── prowlarr/config/          # Config Prowlarr
+├── overseerr/config/         # Config overseerr
 └── plex/config/              # Config Plex
 ```
 
@@ -394,23 +425,19 @@ docker compose restart gluetun qbittorrent
 
 ## 🎬 Workflow d'utilisation
 
-**Pour un film (Radarr) :**
-1. **Ajoutez un film dans Radarr** (via recherche ou liste)
-2. **Radarr recherche automatiquement** le film via les indexers Prowlarr
-3. **Radarr envoie le torrent à qBittorrent**
-4. **qBittorrent télécharge via le VPN** dans `/data/downloads/torrents/` 🔒
-5. **Radarr importe le film** vers `/data/movies/` (hardlink)
-6. **Radarr notifie Plex** qui scanne la nouvelle vidéo
-7. **Le film est disponible sur Plex** pour visionnage !
+1. Utilisateur : Cherche un film sur Overseerr et clique sur "Request".
 
-**Pour une série TV (Sonarr) :**
-1. **Ajoutez une série dans Sonarr** (via recherche ou liste)
-2. **Sonarr recherche automatiquement** les épisodes via les indexers Prowlarr
-3. **Sonarr envoie les torrents à qBittorrent**
-4. **qBittorrent télécharge via le VPN** dans `/data/downloads/torrents/` 🔒
-5. **Sonarr importe les épisodes** vers `/data/tv/` (hardlink)
-6. **Sonarr notifie Plex** qui scanne les nouveaux épisodes
-7. **La série est disponible sur Plex** pour visionnage !
+2. Overseerr : Envoie la demande à Radarr (film) ou Sonarr (série).
+
+3. Radarr/Sonarr : Cherche via Prowlarr et envoie le torrent à qBittorrent.
+
+4. qBittorrent : Télécharge via le VPN Gluetun 🔒.
+
+5. Radarr/Sonarr : Importe le fichier final vers /data/movies ou /data/tv.
+
+6. Overseerr : Détecte que le média est prêt via Plex et envoie une notification.
+
+7. Utilisateur : Reçoit une notification et regarde sur Plex !
 
 **🔒 Note** : Tous les téléchargements torrents passent automatiquement par le VPN (Gluetun). Votre IP réelle n'est jamais exposée.
 

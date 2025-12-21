@@ -149,6 +149,25 @@ services:
       - "traefik.http.routers.plex.tls.certresolver=myresolver"
       - "traefik.http.services.plex.loadbalancer.server.port=32400"
 
+  overseerr:
+    image: lscr.io/linuxserver/overseerr:latest
+    container_name: overseerr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./overseerr/config:/config
+    networks:
+      - ${TRAEFIK_NETWORK}
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.overseerr.rule=Host(`${OVERSEERR_PREFIX}.${DOMAIN}`)"
+      - "traefik.http.routers.overseerr.entrypoints=websecure"
+      - "traefik.http.routers.overseerr.tls.certresolver=myresolver"
+      - "traefik.http.services.overseerr.loadbalancer.server.port=5055"
+
 networks:
   traefik-net:
     external: true

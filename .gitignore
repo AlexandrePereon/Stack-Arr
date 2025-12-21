@@ -8,6 +8,7 @@ qbittorrent/
 prowlarr/
 plex/
 gluetun/
+overseerr/
 
 # Données (médias et téléchargements)
 data/
