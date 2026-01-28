@@ -1,41 +1,48 @@
----
 services:
   gluetun:
-    image: qmcgaw/gluetun:v3
-    container_name: gluetun
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    ports:
-      - 8081:8080/tcp # qbittorrent WebUI (port externe 8081 car 8080 utilisé par portfolio)
-      - 8888:8888/tcp # HTTP proxy pour Prowlarr et autres services
-    environment:
-      - TZ=${TZ}
-      - UPDATER_PERIOD=24h
-      - VPN_SERVICE_PROVIDER=protonvpn
-      - VPN_TYPE=${VPN_TYPE}
-      - BLOCK_MALICIOUS=off
-      - OPENVPN_USER=${OPENVPN_USER}
-      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
-      - OPENVPN_CIPHERS=AES-256-GCM
-      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
-      - PORT_FORWARD_ONLY=on
-      - VPN_PORT_FORWARDING=on
-      - VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORTS}}}" http://127.0.0.1:8080/api/v2/app/setPreferences 2>&1'
-      - SERVER_COUNTRIES=${SERVER_COUNTRIES}
-      - HTTPPROXY=on # Active le proxy HTTP sur le port 8888
-    volumes:
-      - ./gluetun/config:/gluetun
-    networks:
-      - ${TRAEFIK_NETWORK}
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.qbittorrent.rule=Host(`${QBITTORRENT_PREFIX}.${DOMAIN}`)"
-      - "traefik.http.routers.qbittorrent.entrypoints=websecure"
-      - "traefik.http.routers.qbittorrent.tls.certresolver=myresolver"
-      - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
+      image: qmcgaw/gluetun:latest
+      container_name: gluetun
+      cap_add:
+        - NET_ADMIN
+      devices:
+        - /dev/net/tun:/dev/net/tun
+      ports:
+        - 8081:8080/tcp
+      environment:
+        - TZ=${TZ}
+        - UPDATER_PERIOD=24h
+        - VPN_SERVICE_PROVIDER=protonvpn
+        - VPN_TYPE=wireguard # Assure-toi que c'est bien "wireguard"
+        - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+        
+        # --- SOLUTIONS AUX TIMEOUTS ---
+        - WIREGUARD_IMPLEMENTATION=userspace  # Force le mode utilisateur (plus stable en Docker)
+        - DOT=off                             # Désactive DNS over TLS (les logs montraient une erreur 853)
+        - DNS_ADDRESS=1.1.1.1                 # Utilise un DNS classique pour le healthcheck
+        - VPN_INTERFACE_MTU=1320              # Réduit le MTU pour éviter la fragmentation des paquets
+        
+        # --- PORT FORWARDING ---
+        - VPN_PORT_FORWARDING=on
+        - VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORTS}}}" http://127.0.0.1:8080/api/v2/app/setPreferences 2>&1'
+        
+        # --- AUTRES ---
+        - BLOCK_MALICIOUS=off
+        - SERVER_COUNTRIES=${SERVER_COUNTRIES}
+        - HTTPPROXY=on
+      # --- DESACTIVATION IPV6 (Crucial pour le routage VPN) ---
+      sysctls:
+        - net.ipv6.conf.all.disable_ipv6=1
+      volumes:
+        - ./gluetun/config:/gluetun
+      networks:
+        - ${TRAEFIK_NETWORK}
+      restart: unless-stopped
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.qbittorrent.rule=Host(`${QBITTORRENT_PREFIX}.${DOMAIN}`)"
+        - "traefik.http.routers.qbittorrent.entrypoints=websecure"
+        - "traefik.http.routers.qbittorrent.tls.certresolver=myresolver"
+        - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
 
   radarr:
     image: lscr.io/linuxserver/radarr:latest
